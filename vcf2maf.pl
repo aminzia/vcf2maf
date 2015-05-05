@@ -11,7 +11,8 @@ use Config;
 
 # Set any default paths and constants
 my ( $tumor_id, $normal_id ) = ( "TUMOR", "NORMAL" );
-my ( $vep_path, $vep_data, $vep_forks, $ref_fasta ) = ( "$ENV{HOME}/vep", "$ENV{HOME}/.vep", 1, "$ENV{HOME}/.vep/homo_sapiens/78_GRCh37/Homo_sapiens.GRCh37.75.dna.primary_assembly.fa" );
+my ( $vep_path, $vep_data, $vep_forks, $ref_fasta ) = ( "/ssd-data/cmo/opt/vep/v79", "/ssd-data/cmo/opt/vep/v79", 4,
+"/ssd-data/cmo/opt/vep/v79/homo_sapiens/79_GRCh37/Homo_sapiens.GRCh37.75.dna.primary_assembly.fa" );
 my ( $snpeff_path, $snpeff_data, $snpeff_db ) = ( "$ENV{HOME}/snpEff", "$ENV{HOME}/snpEff/data", "GRCh37.75" );
 my ( $ncbi_build, $maf_center, $min_hom_vaf ) = ( "GRCh37", ".", 0.7 );
 my $perl_bin = $Config{perlpath};
@@ -241,8 +242,9 @@ elsif( $input_vcf ) {
         $vep_anno = $input_vcf;
         $vep_anno =~ s/(\.vcf)*$/.vep.vcf/;
 
+        
         # Skip running VEP if a VEP-annotated VCF already exists
-        if( -s $vep_anno ) {
+        if( -s $vep_anno && MatchVcfWithVep( ) ) {
             warn "WARNING: Annotated VCF already exists ($vep_anno). Skipping re-annotation.\n";
         }
         else {
@@ -813,6 +815,38 @@ sub GetVariantClassification {
     # TFBS_ablation, TFBS_amplification,regulatory_region_ablation, regulatory_region_amplification,
     # feature_elongation, feature_truncation
     return "Targeted_Region";
+}
+
+# See if the VCF file was annotated before. Return 1 if it was annotated. Otherwise return 0
+sub MatchVcfWithVep {                 
+    # Read input vcf into a hash. Lines starting with # are ignored.
+    my %vcf_info;
+    my $vcf_fh = IO::File->new( $input_vcf ) or die "ERROR: Couldn't open annotated VCF: $input_vcf!\n";
+    while( my $line = $vcf_fh->getline ) {
+        # Skip header lines
+        next if( $line =~ m/^#/ || $line =~ m/^$/ );
+        my @cols = split( /\t/, $line );
+        $vcf_info{ join( "\t", @cols[0..4] ) } = 1;
+    }
+    $vcf_fh->close;
+
+    # See if $bk_vcf and $input_vcf are the same file.
+    $vcf_fh = IO::File->new( $vep_anno ) or die "ERROR: Couldn't open annotated VCF: $vep_anno!\n";
+    while( my $line = $vcf_fh->getline ) {
+        # Skip header lines
+        next if( $line =~ m/^#/ || $line =~ m/^$/ || $line =~ m/^Hugo_Symbol/);
+        my @cols = split( /\t/, $line );
+        my $key = join( "\t", @cols[0..4] );
+        if (! exists ( $vcf_info{ $key } ) ) { $vcf_fh->close; return 0 };
+        $vcf_info{ $key } ++;
+    }
+    $vcf_fh->close;
+
+    foreach ( keys %vcf_info ) {
+        return 0 if( $vcf_info{ $_ } == 1 );
+    }
+    
+    return 1;
 }
 
 __DATA__

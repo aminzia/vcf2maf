@@ -7,9 +7,11 @@ use warnings;
 use IO::File;
 use Getopt::Long qw( GetOptions );
 use Pod::Usage qw( pod2usage );
+use File::Basename;
+use Cwd 'abs_path';
 
 # Set any default paths and constants
-my $ref_fasta = "$ENV{HOME}/.vep/homo_sapiens/78_GRCh37/Homo_sapiens.GRCh37.75.dna.primary_assembly.fa";
+my $ref_fasta = "/ssd-data/cmo/opt/vep/v79/homo_sapiens/79_GRCh37/Homo_sapiens.GRCh37.75.dna.primary_assembly.fa";
 my ( $tum_depth_col, $tum_rad_col, $tum_vad_col ) = qw( t_depth t_ref_count t_alt_count );
 my ( $nrm_depth_col, $nrm_rad_col, $nrm_vad_col ) = qw( n_depth n_ref_count n_alt_count );
 
@@ -48,6 +50,10 @@ pod2usage( -verbose => 2, -input => \*DATA, -exitval => 0 ) if( $man );
 
 # Parse through each variant in the MAF, and fill up the respective VCFs
 my $maf_fh = IO::File->new( $input_maf ) or die "ERROR: Couldn't open file: $input_maf\n";
+
+my ( $maf_name, $maf_path ) = fileparse( abs_path( $input_maf ) );
+$maf_path =~ s/\//_/g;
+
 my $line_count = 0;
 my %col_idx = (); # Hash to map column names to column indexes
 while( my $line = $maf_fh->getline ) {
@@ -77,7 +83,7 @@ while( my $line = $maf_fh->getline ) {
         foreach my $pair ( @tn_pair ) {
             my ( $t_id, $n_id ) = split( /\t/, $pair );
             $n_id = "NORMAL" unless( defined $n_id ); # Use a placeholder name for normal if its undefined
-            my $vcf_file = "$output_dir/$t_id\_vs_$n_id.vcf";
+            my $vcf_file = "$output_dir/$maf_path$t_id\_vs_$n_id.vcf";
             my $vcf_fh = IO::File->new( $vcf_file, ">" );
             $vcf_fh->print( "##fileformat=VCFv4.2\n" );
             $vcf_fh->print( "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n" );
@@ -163,7 +169,7 @@ while( my $line = $maf_fh->getline ) {
     my $n_fmt = "$n_gt:$n_rad,$n_vad:$n_dp";
 
     # Contruct a VCF formatted line and append it to the respective VCF
-    my $vcf_file = "$output_dir/$t_id\_vs_$n_id.vcf";
+    my $vcf_file = "$output_dir/$maf_path$t_id\_vs_$n_id.vcf";
     my $vcf_line = join( "\t", $chr, $pos, ".", $ref, $alt, qw( . . . ), "GT:AD:DP", $t_fmt, $n_fmt );
     my $vcf_fh = IO::File->new( $vcf_file, ">>" );
     $vcf_fh->print( "$vcf_line\n" );
