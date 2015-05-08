@@ -54,7 +54,7 @@ GetOptions(
     'man!' => \$man,
     'input-maf=s' => \$input_maf,
     'output-maf=s' => \$output_maf,
-    'force-re-annotation=s' => \$force_reannotation,
+    'force-re-annotation' => \$force_reannotation,
     'tmp-dir=s' => \$tmp_dir,
     'tum-depth-col=s' => \$tum_depth_col,
     'tum-rad-col=s' => \$tum_rad_col,
