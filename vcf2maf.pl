@@ -248,6 +248,7 @@ elsif( $input_vcf ) {
             warn "WARNING: Annotated VCF already exists ($vep_anno). Skipping re-annotation.\n";
         }
         else {
+            `rm $vep_anno` if ( -s $vep_anno );
             warn "STATUS: Running VEP and writing to: $vep_anno\n";
             # Make sure we can find the VEP script and the reference FASTA
             ( -s "$vep_path/variant_effect_predictor.pl" ) or die "ERROR: Cannot find VEP script variant_effect_predictor.pl in path: $vep_path\n";
